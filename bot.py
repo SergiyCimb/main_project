@@ -15,10 +15,49 @@ TG_TOKEN = os.getenv("TG_TOKEN")
 MONO_TOKEN = os.getenv("MONO_TOKEN")
 
 MCC_CATEGORIES = {
-    "Продукти": [5411, 5422, 5441],
-    "Транспорт": [4111, 4121, 4131],
-    "Розваги": [5815, 5816, 5817, 5818],
+    "Продукти": [
+        5411,  # супермаркети (АТБ, Сільпо)
+        5422,  # м'ясні магазини
+        5441,  # кондитерські
+        5451,  # молочні продукти
+        5462,  # пекарні
+        5499   # інші продуктові
+    ],
+
+    "Транспорт": [
+        4111,  # громадський транспорт
+        4121,  # таксі (Bolt, Uber)
+        4131,  # автобуси
+        4789,  # транспортні сервіси
+    ],
+
+    "Розваги": [
+        5815,  # цифрові розваги (Steam)
+        5816,
+        5817,
+        5818,
+        7832,  # кінотеатри
+        7922,  # концерти
+        7995   # ігри/спорт/розваги
+    ]
 }
+
+def get_category(mcc, description):
+    description = description.lower()
+
+    # Продукти
+    if mcc in MCC_CATEGORIES["Продукти"] or any(x in description for x in ["atb", "silpo", "novus"]):
+        return "🛒 Продукти"
+
+    # Транспорт
+    if mcc in MCC_CATEGORIES["Транспорт"] or any(x in description for x in ["uber", "bolt", "taxi"]):
+        return "🚕 Транспорт"
+
+    # Розваги
+    if mcc in MCC_CATEGORIES["Розваги"] or any(x in description for x in ["steam", "netflix", "megogo"]):
+        return "🎮 Розваги"
+
+    return "📦 Інше"
 
 if not TG_TOKEN or not MONO_TOKEN:
     raise Exception("Перевір .env файл — токени не знайдені")
@@ -30,26 +69,20 @@ dp = Dispatcher()
 
 def calculate_categories(transactions):
     categories = {
-        "Продукти": 0,
-        "Транспорт": 0,
-        "Розваги": 0,
-        "Інше": 0
+        "🛒 Продукти": 0,
+        "🚕 Транспорт": 0,
+        "🎮 Розваги": 0,
+        "📦 Інше": 0
     }
 
     for t in transactions:
         if t["amount"] < 0:
             amount = abs(t["amount"]) / 100
             mcc = t.get("mcc", 0)
+            desc = t.get("description", "")
 
-            found = False
-            for category, mcc_list in MCC_CATEGORIES.items():
-                if mcc in mcc_list:
-                    categories[category] += amount
-                    found = True
-                    break
-
-            if not found:
-                categories["Інше"] += amount
+            category = get_category(mcc, desc)
+            categories[category] += amount
 
     return categories
 
@@ -103,7 +136,7 @@ async def help_handler(message: Message):
 
 @dp.message(Command("start"))
 async def start_handler(message: Message):
-    await message.answer("✅ Бот працює!\nНапиши /week щоб побачити витрати за 7 днів")
+    await message.answer("✅ Бот працює!\nНапиши /help щоб побачити доступні функції")
 
 @dp.message(Command("week"))
 async def week_handler(message: Message):
